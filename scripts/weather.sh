@@ -121,11 +121,11 @@ weather_symbol() {
 			fi
 		fi
 	else
-		if [ "$percipitation" == "1" ]; then
-			if [ "$rain" == "1" ]; then
+		if [ "$cloud_cover" -gt 50 ]; then
+			if [ "$rain" -gt 0 ]; then
 				echo "🌧️"
 			else
-				echo "🌦️"
+				echo "☁️"
 			fi
 		else
 			echo "🌙"
@@ -143,8 +143,6 @@ main() {
 	local rain=$(echo $unpacked_data | cut -d ' ' -f 5)
 	local symbol=$(weather_symbol "$is_day" "$cloud_cover" "$percipitation" "$rain")
 	echo "$symbol $temperature°F"
-	#echo $(get_location)
-	#echo $(get_weather $(get_location))
 }
 
 main
