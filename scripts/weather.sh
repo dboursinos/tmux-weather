@@ -16,7 +16,20 @@ get_location() {
 	fi
 
 	local location
-	location=$(curl -s https://ipinfo.io/ 2>/dev/null)
+	local cache_location_duration=$(get_tmux_option @weather-location-cache-duration 6000) # in seconds
+	local cache_location_path=$(get_tmux_option @weather-location-cache-path "/tmp/.weather-location.json")
+	if [ "$cache_location_duration" -gt 0 ]; then
+		if ! [ -f "$cache_location_path" ] || [ "$cache_file_age" -ge "$cache_location_duration" ]; then
+			location=$(curl -s https://ipinfo.io/ 2>/dev/null)
+			mkdir -p "$(dirname "$cache_location_path")"
+			echo $location >"$cache_location_path"
+		else
+			location=$(cat "$cache_location_path" 2>/dev/null)
+		fi
+	else
+		location=$(curl -s https://ipinfo.io/ 2>/dev/null)
+	fi
+
 	#city=$(echo $location | jq -r '.city')
 	#region=$(echo $location | jq -r '.region')
 	latitude=$(echo "$location" | jq -r '.loc' | cut -d ',' -f 1)
@@ -80,7 +93,7 @@ get_cached_weather() {
 
 unpack() {
 	local weather_data=$(get_cached_weather "$(get_location)")
-	local temperature=$(echo $weather_data | jq -r '.current.temperature_2m')
+	local temperature=$(echo $weather_data | jq -r '.current.temperature_2m') | awk '{printf "%.0f\n", $1}'
 	local is_day=$(echo $weather_data | jq -r '.current.is_day')
 	local cloud_cover=$(echo $weather_data | jq -r '.current.cloud_cover')
 	local percipitation=$(echo $weather_data | jq -r '.current.percipitation')
