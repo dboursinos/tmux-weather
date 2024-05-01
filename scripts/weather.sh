@@ -38,7 +38,7 @@ get_weather() {
 	fi
 
 	while [ $retry_count -lt $max_retries ]; do
-		local response=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,is_day,cloud_cover,percipitation,rain&temperature_unit=fahrenheit")
+		local response=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,is_day,cloud_cover,rain&temperature_unit=fahrenheit")
 
 		if [ -z "$response" ]; then
 			retry_count=$((retry_count + 1))
@@ -60,26 +60,26 @@ get_weather() {
 get_cached_weather() {
 	local latitude=$1
 	local longitude=$2
-	local cache_duration=$(get_tmux_option @forecast-cache-duration 0)                                  # in seconds, by default cache is disabled
-	local cache_path=$(get_tmux_option @forecast-cache-path "/tmp/.weather-$latitude\_$longitude.json") # where to store the cached data
+	local cache_duration=$(get_tmux_option @weather-cache-duration 600)                                # in seconds, by default cache is disabled
+	local cache_path=$(get_tmux_option @weather-cache-path "/tmp/.weather-$latitude\_$longitude.json") # where to store the cached data
 	local cache_file_age=$(get_file_age "$cache_path")
 	local weather_data
 	if [ "$cache_duration" -gt 0 ]; then
 		if ! [ -f "$cache_path" ] || [ "$cache_file_age" -ge "$cache_duration" ]; then
-			weather_data=$(get_weather)
+			weather_data=$(get_weather $latitude $longitude)
 			mkdir -p "$(dirname "$cache_path")"
-			echo "$weather_data" >"$cache_path"
+			echo $weather_data >"$cache_path"
 		else
 			weather_data=$(cat "$cache_path" 2>/dev/null)
 		fi
 	else
-		weather_data=$(get_weather)
+		weather_data=$(get_weather $latitude $longitude)
 	fi
 	echo "$weather_data"
 }
 
 unpack() {
-	local weather_data=$(get_cached_weather)
+	local weather_data=$(get_cached_weather "$(get_location)")
 	local temperature=$(echo $weather_data | jq -r '.current.temperature_2m')
 	local is_day=$(echo $weather_data | jq -r '.current.is_day')
 	local cloud_cover=$(echo $weather_data | jq -r '.current.cloud_cover')
@@ -121,11 +121,8 @@ weather_symbol() {
 }
 
 main() {
-	local location=$(get_location)
-	local latitude=$(echo $location | cut -d ' ' -f 1)
-	local longitude=$(echo $location | cut -d ' ' -f 2)
-	local weather_data=$(get_cached_weather "$latitude" "$longitude")
-	local unpacked_data=$(unpack "$weather_data")
+	local weather_data=$(get_cached_weather "$(get_location)")
+	local unpacked_data=$(unpack)
 	local temperature=$(echo $unpacked_data | cut -d ' ' -f 1)
 	local is_day=$(echo $unpacked_data | cut -d ' ' -f 2)
 	local cloud_cover=$(echo $unpacked_data | cut -d ' ' -f 3)
@@ -133,6 +130,8 @@ main() {
 	local rain=$(echo $unpacked_data | cut -d ' ' -f 5)
 	local symbol=$(weather_symbol "$is_day" "$cloud_cover" "$percipitation" "$rain")
 	echo "$symbol $temperature°F"
+	#echo $(get_location)
+	#echo $(get_weather $(get_location))
 }
 
 main
