@@ -6,18 +6,43 @@ source "$CURRENT_DIR/helpers.sh"
 
 get_location() {
 	local location
-	location=$(get_tmux_option "@weather-location" "")
+	local coordinates_cache_file=$(get_tmux_option "@weather-coordinates-cache-file" "/tmp/.city-coordinates.json")
+	local location=$(get_tmux_option "@weather-location" "")
 	if [ -n "$location" ]; then
+		if [ -f "$coordinates_cache_file" ]; then
+			local latitude=$(jq -r --arg location "$location" '.location.${location}.latitude' "$coordinates_cache_file")
+			local longitude=$(jq -r --arg location "$location" '.location.${location}.longitude' "$coordinates_cache_file")
+			local cached_coordinates="$latitude $longitude"
+			if [ -n "$latitude" ] && [ -n "$longitude" ]; then
+				echo "$cached_coordinates"
+				return
+			fi
+		fi
 		geocode=$(curl -s "https://geocoding-api.open-meteo.com/v1/search?name=$location&count=1")
 		latitude=$(echo $geocode | jq -r '.results[0].latitude')
 		longitude=$(echo $geocode | jq -r '.results[0].longitude')
+
+		# Update the cache file with the new coordinates
+		if [ -f "$coordinates_cache_file" ]; then
+			# if the location is not in the cache file, add it
+			local location_in_cache=$(jq -r --arg location "$location" '.location | has($location)' "$coordinates_cache_file")
+			if [ "$location_in_cache" == "false" ]; then
+				jq --arg location "$location" --arg latitude "$latitude" --arg longitude "$longitude" '.location += {$location: {"latitude": $latitude, "longitude": $longitude}}' "$coordinates_cache_file" >"$coordinates_cache_file.tmp"
+				mv "${coordinates_cache_file}.tmp" "${coordinates_cache_file}" --force
+			fi
+		else
+			echo '{"location": {' >>"$coordinates_cache_file"
+			echo "  \"$location\": {\"latitude\": \"$latitude\", \"longitude\": \"$longitude\"}" >>"$coordinates_cache_file"
+			echo '}}' >>"$coordinates_cache_file"
+			#echo "{\"$location\": \"$latitude $longitude\"}" >"$coordinates_cache_file"
+		fi
 		echo "$latitude $longitude"
 		return
 	fi
 
-	local location
 	local cache_location_duration=$(get_tmux_option @weather-location-cache-duration 6000) # in seconds
 	local cache_location_path=$(get_tmux_option @weather-location-cache-path "/tmp/.weather-location.json")
+	local cache_file_age=$(get_file_age "$cache_location_path")
 	if [ "$cache_location_duration" -gt 0 ]; then
 		if ! [ -f "$cache_location_path" ] || [ "$cache_file_age" -ge "$cache_location_duration" ]; then
 			location=$(curl -s https://ipinfo.io/ 2>/dev/null)
@@ -93,12 +118,12 @@ get_cached_weather() {
 
 unpack() {
 	local weather_data=$(get_cached_weather "$(get_location)")
-	local temperature=$(echo $weather_data | jq -r '.current.temperature_2m') | awk '{printf "%.0f\n", $1}'
+	local temperature=$(echo $weather_data | jq -r '.current.temperature_2m')
 	local is_day=$(echo $weather_data | jq -r '.current.is_day')
 	local cloud_cover=$(echo $weather_data | jq -r '.current.cloud_cover')
 	local percipitation=$(echo $weather_data | jq -r '.current.percipitation')
 	local rain=$(echo $weather_data | jq -r '.current.rain')
-	echo "$temperature $is_day $cloud_cover $percipitation $rain"
+	echo "$temperature $is_day $cloud_cover $rain"
 }
 
 weather_symbol() {
@@ -106,6 +131,28 @@ weather_symbol() {
 	local cloud_cover=$2
 	local percipitation=$3
 	local rain=$4
+
+	# Weather icons from https://www.nerdfonts.com/cheat-sheet
+	# Possible TODO: Add more weather icons
+	declare -A weather_icons=(
+		["Clear"]="󰖙"
+		["Cloud"]=""
+		["Drizzle"]="󰖗"
+		["Fog"]=""
+		["Haze"]="󰼰"
+		["Mist"]=""
+		["Overcast"]=""
+		["Rain"]=""
+		["Sand"]=""
+		["Shower"]=""
+		["Smoke"]=""
+		["Snow"]=""
+		["Sunny"]="󰖙"
+		["Thunderstorm"]=""
+		["Tornado"]="󰼸"
+		["Windy"]="󰖝"
+	)
+
 	if [ "$is_day" == "1" ]; then
 		if [ "$percipitation" == "1" ]; then
 			if [ "$rain" == "1" ]; then
