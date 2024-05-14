@@ -40,8 +40,8 @@ get_location() {
 	fi
 
 	local cache_location_duration_minutes=$(get_tmux_option @weather-location-interval 240) # in minutes
-	if [ "$cache_location_duration_minutes" -lt 60 ]; then
-		cache_location_duration_minutes=60
+	if [ "$cache_location_duration_minutes" -lt 120 ]; then
+		cache_location_duration_minutes=120
 	fi
 	local cache_location_duration=$((cache_location_duration_minutes * 60))
 	local cache_location_path=$(get_tmux_option @weather-location-cache-path "/tmp/.weather-location.json")
@@ -107,7 +107,7 @@ get_weather() {
 get_cached_weather() {
 	local latitude=$1
 	local longitude=$2
-	local cache_duration_minutes=$(get_tmux_option @weather-interval 10) # in seconds, by default cache is disabled
+	local cache_duration_minutes=$(get_tmux_option @weather-interval 15) # in seconds, by default cache is disabled
 	if [ "$cache_duration_minutes" -lt 5 ]; then
 		cache_duration_minutes=5
 	fi
