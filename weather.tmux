@@ -5,7 +5,7 @@ CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "$CURRENT_DIR/scripts/helpers.sh"
 
 weather_details="#($CURRENT_DIR/scripts/weather.sh)"
-weather_details_interpolation_string="\#{weather-new}"
+weather_details_interpolation_string="\#{weather}"
 
 do_interpolation() {
   local string="$1"

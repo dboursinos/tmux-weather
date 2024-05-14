@@ -34,15 +34,19 @@ get_location() {
 			echo '{"location": {' >>"$coordinates_cache_file"
 			echo "  \"$location\": {\"latitude\": \"$latitude\", \"longitude\": \"$longitude\"}" >>"$coordinates_cache_file"
 			echo '}}' >>"$coordinates_cache_file"
-			#echo "{\"$location\": \"$latitude $longitude\"}" >"$coordinates_cache_file"
 		fi
 		echo "$latitude $longitude"
 		return
 	fi
 
-	local cache_location_duration=$(get_tmux_option @weather-location-cache-duration 6000) # in seconds
+	local cache_location_duration_minutes=$(get_tmux_option @weather-location-interval 240) # in minutes
+	if [ "$cache_location_duration_minutes" -lt 60 ]; then
+		cache_location_duration_minutes=60
+	fi
+	local cache_location_duration=$((cache_location_duration_minutes * 60))
 	local cache_location_path=$(get_tmux_option @weather-location-cache-path "/tmp/.weather-location.json")
 	local cache_file_age=$(get_file_age "$cache_location_path")
+	# TODO: The external if statement is not needed anymore
 	if [ "$cache_location_duration" -gt 0 ]; then
 		if ! [ -f "$cache_location_path" ] || [ "$cache_file_age" -ge "$cache_location_duration" ]; then
 			location=$(curl -s https://ipinfo.io/ 2>/dev/null)
@@ -75,8 +79,13 @@ get_weather() {
 		return 1
 	fi
 
+	local show_fahrenheit=$(get_tmux_option "@weather-show-fahrenheit" "true")
 	while [ $retry_count -lt $max_retries ]; do
-		local response=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,is_day,cloud_cover,rain&temperature_unit=fahrenheit")
+		if [ "$show_fahrenheit" == "false" ]; then
+			local response=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,is_day,cloud_cover,rain")
+		else
+			local response=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,is_day,cloud_cover,rain&temperature_unit=fahrenheit")
+		fi
 
 		if [ -z "$response" ]; then
 			retry_count=$((retry_count + 1))
@@ -98,7 +107,11 @@ get_weather() {
 get_cached_weather() {
 	local latitude=$1
 	local longitude=$2
-	local cache_duration=$(get_tmux_option @weather-cache-duration 600)                                # in seconds, by default cache is disabled
+	local cache_duration_minutes=$(get_tmux_option @weather-interval 10) # in seconds, by default cache is disabled
+	if [ "$cache_duration_minutes" -lt 5 ]; then
+		cache_duration_minutes=5
+	fi
+	local cache_duration=$((cache_duration_minutes * 60))
 	local cache_path=$(get_tmux_option @weather-cache-path "/tmp/.weather-$latitude\_$longitude.json") # where to store the cached data
 	local cache_file_age=$(get_file_age "$cache_path")
 	local weather_data
@@ -189,7 +202,12 @@ main() {
 	local percipitation=$(echo $unpacked_data | cut -d ' ' -f 4)
 	local rain=$(echo $unpacked_data | cut -d ' ' -f 5)
 	local symbol=$(weather_symbol "$is_day" "$cloud_cover" "$percipitation" "$rain")
-	echo "$symbol $temperature°F"
+	local show_fahrenheit=$(get_tmux_option "@weather-show-fahrenheit" "true")
+	if [ "$show_fahrenheit" == "false" ]; then
+		echo "$symbol $temperature°C"
+	else
+		echo "$symbol $temperature°F"
+	fi
 }
 
 main
