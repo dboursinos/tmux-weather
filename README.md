@@ -1,5 +1,7 @@
 # Weather plugin for tmux
 
+![GitHub License](https://img.shields.io/github/license/dboursinos/tmux-weather?cacheSeconds=7200)
+
 Shows current temperature and weather conditions in the status line, data provided by [Open-Meteo](https://open-meteo.com/).
 
 ## Installation
