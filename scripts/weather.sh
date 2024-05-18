@@ -166,6 +166,11 @@ weather_symbol() {
 		["Windy"]="󰖝"
 	)
 
+	# TODO:
+	# Add partial cloud cover ⛅️
+	# Add partial rain 🌦️
+	# Add snow ❄️
+	# Reorganize the if statements
 	if [ "$is_day" == "1" ]; then
 		if [ "$percipitation" == "1" ]; then
 			if [ "$rain" == "1" ]; then
