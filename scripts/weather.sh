@@ -10,8 +10,8 @@ get_location() {
 	local location=$(get_tmux_option "@weather-location" "")
 	if [ -n "$location" ]; then
 		if [ -f "$coordinates_cache_file" ]; then
-			local latitude=$(jq -r --arg location "$location" '.location.${location}.latitude' "$coordinates_cache_file")
-			local longitude=$(jq -r --arg location "$location" '.location.${location}.longitude' "$coordinates_cache_file")
+			local latitude=$(jq -r --arg location "$location" '.location[$location].latitude' "$coordinates_cache_file")
+			local longitude=$(jq -r --arg location "$location" '.location[$location].longitude' "$coordinates_cache_file")
 			local cached_coordinates="$latitude $longitude"
 			if [ -n "$latitude" ] && [ -n "$longitude" ]; then
 				echo "$cached_coordinates"
@@ -147,24 +147,24 @@ weather_symbol() {
 
 	# Weather icons from https://www.nerdfonts.com/cheat-sheet
 	# Possible TODO: Add more weather icons
-	declare -A weather_icons=(
-		["Clear"]="󰖙"
-		["Cloud"]=""
-		["Drizzle"]="󰖗"
-		["Fog"]=""
-		["Haze"]="󰼰"
-		["Mist"]=""
-		["Overcast"]=""
-		["Rain"]=""
-		["Sand"]=""
-		["Shower"]=""
-		["Smoke"]=""
-		["Snow"]=""
-		["Sunny"]="󰖙"
-		["Thunderstorm"]=""
-		["Tornado"]="󰼸"
-		["Windy"]="󰖝"
-	)
+	#declare -A weather_icons=(
+		#["Clear"]="󰖙"
+		#["Cloud"]=""
+		#["Drizzle"]="󰖗"
+		#["Fog"]=""
+		#["Haze"]="󰼰"
+		#["Mist"]=""
+		#["Overcast"]=""
+		#["Rain"]=""
+		#["Sand"]=""
+		#["Shower"]=""
+		#["Smoke"]=""
+		#["Snow"]=""
+		#["Sunny"]="󰖙"
+		#["Thunderstorm"]=""
+		#["Tornado"]="󰼸"
+		#["Windy"]="󰖝"
+	#)
 
 	# TODO:
 	# Add partial cloud cover ⛅️
@@ -209,9 +209,9 @@ main() {
 	local symbol=$(weather_symbol "$is_day" "$cloud_cover" "$percipitation" "$rain")
 	local show_fahrenheit=$(get_tmux_option "@weather-show-fahrenheit" "true")
 	if [ "$show_fahrenheit" == "false" ]; then
-		echo "$symbol $temperature°C"
+		echo "${symbol} ${temperature}°C"
 	else
-		echo "$symbol $temperature°F"
+		echo "${symbol} ${temperature}°F"
 	fi
 }
 
