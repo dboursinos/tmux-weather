@@ -82,9 +82,9 @@ get_weather() {
 	local show_fahrenheit=$(get_tmux_option "@weather-show-fahrenheit" "true")
 	while [ $retry_count -lt $max_retries ]; do
 		if [ "$show_fahrenheit" == "false" ]; then
-			local response=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,is_day,cloud_cover,rain")
+			local response=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,is_day,precipitation,cloud_cover,rain")
 		else
-			local response=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,is_day,cloud_cover,rain&temperature_unit=fahrenheit")
+			local response=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,is_day,cloud_cover,precipitation,rain&temperature_unit=fahrenheit")
 		fi
 
 		if [ -z "$response" ]; then
@@ -148,38 +148,40 @@ weather_symbol() {
 	# Weather icons from https://www.nerdfonts.com/cheat-sheet
 	# Possible TODO: Add more weather icons
 	#declare -A weather_icons=(
-		#["Clear"]="󰖙"
-		#["Cloud"]=""
-		#["Drizzle"]="󰖗"
-		#["Fog"]=""
-		#["Haze"]="󰼰"
-		#["Mist"]=""
-		#["Overcast"]=""
-		#["Rain"]=""
-		#["Sand"]=""
-		#["Shower"]=""
-		#["Smoke"]=""
-		#["Snow"]=""
-		#["Sunny"]="󰖙"
-		#["Thunderstorm"]=""
-		#["Tornado"]="󰼸"
-		#["Windy"]="󰖝"
+	#["Clear"]="󰖙"
+	#["Cloud"]=""
+	#["Drizzle"]="󰖗"
+	#["Fog"]=""
+	#["Haze"]="󰼰"
+	#["Mist"]=""
+	#["Overcast"]=""
+	#["Rain"]=""
+	#["Sand"]=""
+	#["Shower"]=""
+	#["Smoke"]=""
+	#["Snow"]=""
+	#["Sunny"]="󰖙"
+	#["Thunderstorm"]=""
+	#["Tornado"]="󰼸"
+	#["Windy"]="󰖝"
 	#)
 
 	# TODO:
-	# Add partial cloud cover ⛅️
+	# Add partial cloud cover ⛅️/🌤️
 	# Add partial rain 🌦️
 	# Add snow ❄️
 	# Reorganize the if statements
 	if [ "$is_day" == "1" ]; then
-		if [ "$percipitation" == "1" ]; then
-			if [ "$rain" == "1" ]; then
+		if [ "$percipitation" -gt 0 ]; then
+			if [ "$rain" -gt 0 ]; then
 				echo "🌧️"
 			else
 				echo "🌦️"
 			fi
 		else
-			if [ "$cloud_cover" -gt 50 ]; then
+			if [ "$cloud_cover" -gt 20 ] && [ "$cloud_cover" -lt 50 ]; then
+				echo "⛅️"
+			elif [ "$cloud_cover" -gt 50 ]; then
 				echo "☁️"
 			else
 				echo "☀️"
