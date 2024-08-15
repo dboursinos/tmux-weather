@@ -49,6 +49,11 @@ This plugin can be customized using by setting the following parameters inside `
 - `set-option -g @weather-location-interval 240` - Set up the interval you wish to determine your location based on your IP in minutes. By default, it is 240 minutes and cannot be lower than 120 minutes. It is only used if `@weather-location` is empty.
 - `set-option -g @weather-location-cache-path "/tmp/.weather-location.json"` - Set up the location of the file that stores the last estimated coordinates based on the IP address. It is only used if `@weather-location` is empty.
 
+## Testing
+
+The tests run using `shunit2`.
+Run all tests by executing the file `./tests/test_weather.sh`.
+
 ## License
 
 The tmux-weather plugin is released under the [MIT License](https://opensource.org/licenses/MIT).
