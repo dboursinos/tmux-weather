@@ -172,8 +172,12 @@ weather_symbol() {
   # Add snow ❄️
   # Reorganize the if statements
   if [ "$is_day" == "1" ]; then
-    if [ "$percipitation" -gt 0 ]; then
-      if [ "$rain" -gt 0 ]; then
+    # Comparison with decimals in bash https://stackoverflow.com/a/11238237
+    # https://stackoverflow.com/a/45591665
+    if ($(echo $percipitation | awk '{if ($1 > 0) print 1;}')); then
+      #if ($(echo "$percipitation > 0" | bc -l)); then # Works but shows a warning
+      if ($(echo $rain | awk '{if ($1 > 0) print 1;}')); then
+        #if ($(echo "$rain > 0" | bc -l)); then # Works but shows a warning
         echo "🌧️"
       else
         echo "🌦️"
@@ -189,7 +193,8 @@ weather_symbol() {
     fi
   else
     if [ "$cloud_cover" -gt 50 ]; then
-      if [ "$rain" -gt 0 ]; then
+      #if ($(echo "$rain > 0" | bc -l)); then # Works but shows a warning
+      if ($(echo $rain | awk '{if ($1 > 0) print 1;}')); then
         echo "🌧️"
       else
         echo "☁️"
