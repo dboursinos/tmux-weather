@@ -4,12 +4,68 @@
 source ../scripts/helpers.sh
 source ../scripts/weather.sh
 
+test_weather_symbol() {
+  # Test case 1
+  # Sunny weather
+  is_day=1
+  cloud_cover=10
+  percipitation=0
+  rain=0
+  result=$(weather_symbol "$is_day" "$cloud_cover" "$percipitation" "$rain")
+  assertEquals "☀️" "$result"
+
+  # Test case 2
+  # Cloudy weather
+  is_day=1
+  cloud_cover=60
+  percipitation=0
+  rain=0
+  result=$(weather_symbol "$is_day" "$cloud_cover" "$percipitation" "$rain")
+  assertEquals "☁️" "$result"
+
+  # Test case 3
+  # Partial cloud cover
+  is_day=1
+  cloud_cover=30
+  percipitation=0
+  rain=0
+  result=$(weather_symbol "$is_day" "$cloud_cover" "$percipitation" "$rain")
+  assertEquals "⛅️" "$result"
+
+  # Test case 4
+  # Cloudy weather with rain
+  is_day=1
+  cloud_cover=60
+  percipitation=0.1
+  rain=0.1
+  result=$(weather_symbol "$is_day" "$cloud_cover" "$percipitation" "$rain")
+  assertEquals "🌧️" "$result"
+
+  # Test case 5
+  # Night time with rain
+  is_day=0
+  cloud_cover=60
+  percipitation=0.1
+  rain=0.1
+  result=$(weather_symbol "$is_day" "$cloud_cover" "$percipitation" "$rain")
+  assertEquals "🌧️" "$result"
+
+  # Test case 6
+  # Night clear sky
+  is_day=0
+  cloud_cover=10
+  percipitation=0
+  rain=0
+  result=$(weather_symbol "$is_day" "$cloud_cover" "$percipitation" "$rain")
+  assertEquals "🌙" "$result"
+}
+
 # Test get_location function
 # Test case 1
 # Test when the location is set in the tmux options
 # Expected: The function should return the coordinates of the location
 test_get_location_location_set_file_exists() {
-  set_tmux_option "@weather-location" "Chattanooga"
+  set_tmux_option "@weather-location" "Boston"
   set_tmux_option "@weather-coordinates-cache-file" "${PWD}/files/.city-coordinates.json"
   # Call the function
   result=$(get_location)
