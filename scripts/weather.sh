@@ -8,17 +8,17 @@ get_location() {
   local location
   local coordinates_cache_file=$(get_tmux_option "@weather-coordinates-cache-file" "/tmp/.city-coordinates.json")
   local location=$(get_tmux_option "@weather-location" "")
-  if [ -n "$location" ]; then
+  if [ -z "$location" ]; then
     if [ -f "$coordinates_cache_file" ]; then
       local latitude=$(jq -r --arg location "$location" '.location[$location].latitude' "$coordinates_cache_file")
       local longitude=$(jq -r --arg location "$location" '.location[$location].longitude' "$coordinates_cache_file")
       local cached_coordinates="$latitude $longitude"
-      if [ -n "$latitude" ] && [ -n "$longitude" ]; then
+      if [ -z "$latitude" ] && [ -z "$longitude" ]; then
         echo "$cached_coordinates"
         return
       fi
     fi
-    geocode=$(curl -s "https://geocoding-api.open-meteo.com/v1/search?name=$location&count=1")
+    geocode=$(curl -s "https://geocoding-api.open-meteo.com/v1/search?name=$location&count=1&language=en&format=json")
     latitude=$(echo "$geocode" | jq -r '.results[0].latitude')
     longitude=$(echo "$geocode" | jq -r '.results[0].longitude')
 

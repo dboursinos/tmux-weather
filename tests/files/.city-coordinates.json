@@ -1,3 +1,8 @@
-{"location": {
-  "Boston": {"latitude": "42.35843", "longitude": "-71.05977"}
-}}
+{
+  "location": {
+    "Boston": {
+      "latitude": "42.35843",
+      "longitude": "-71.05977"
+    }
+  }
+}

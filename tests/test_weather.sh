@@ -65,7 +65,7 @@ test_weather_symbol() {
 # Test when the location is set in the tmux options
 # Expected: The function should return the coordinates of the location
 test_get_location_location_set_file_exists() {
-  set_tmux_option "@weather-location" "Boston"
+  set_tmux_option "@weather-location" "Chattanooga"
   set_tmux_option "@weather-coordinates-cache-file" "${PWD}/files/.city-coordinates.json"
   # Call the function
   result=$(get_location)
