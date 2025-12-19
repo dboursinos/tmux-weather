@@ -5,40 +5,48 @@ CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$CURRENT_DIR/helpers.sh"
 
 get_location() {
-  local location
+  local location_name
   local coordinates_cache_file=$(get_tmux_option "@weather-coordinates-cache-file" "/tmp/.city-coordinates.json")
-  local location=$(get_tmux_option "@weather-location" "")
-  if [ -z "$location" ]; then
-    if [ -f "$coordinates_cache_file" ]; then
-      local latitude=$(jq -r --arg location "$location" '.location[$location].latitude' "$coordinates_cache_file")
-      local longitude=$(jq -r --arg location "$location" '.location[$location].longitude' "$coordinates_cache_file")
-      local cached_coordinates="$latitude $longitude"
-      if [ -z "$latitude" ] && [ -z "$longitude" ]; then
-        echo "$cached_coordinates"
-        return
-      fi
-    fi
-    geocode=$(curl -s "https://geocoding-api.open-meteo.com/v1/search?name=$location&count=1&language=en&format=json")
-    latitude=$(echo "$geocode" | jq -r '.results[0].latitude')
-    longitude=$(echo "$geocode" | jq -r '.results[0].longitude')
+  location_name=$(get_tmux_option "@weather-location" "")
 
-    # Update the cache file with the new coordinates
+  if [ -n "$location_name" ]; then
+    local latitude=""
+    local longitude=""
+
+    # Attempt to read from cache first
     if [ -f "$coordinates_cache_file" ]; then
-      # if the location is not in the cache file, add it
-      local location_in_cache=$(jq -r --arg location "$location" '.location | has($location)' "$coordinates_cache_file")
-      if [ "$location_in_cache" == "false" ]; then
-        jq --arg location "$location" --arg latitude "$latitude" --arg longitude "$longitude" '.location += {$location: {"latitude": $latitude, "longitude": $longitude}}' "$coordinates_cache_file" >"$coordinates_cache_file.tmp"
-        mv "${coordinates_cache_file}.tmp" "${coordinates_cache_file}" --force
-      fi
-    else
-      echo '{"location": {' >>"$coordinates_cache_file"
-      echo "  \"$location\": {\"latitude\": \"$latitude\", \"longitude\": \"$longitude\"}" >>"$coordinates_cache_file"
-      echo '}}' >>"$coordinates_cache_file"
+      latitude=$(jq -r --arg location "$location_name" '.location[$location].latitude // ""' "$coordinates_cache_file")
+      longitude=$(jq -r --arg location "$location_name" '.location[$location].longitude // ""' "$coordinates_cache_file")
     fi
-    echo "$latitude $longitude"
+
+    # If coordinates are still empty, fetch from API
+    if [ -z "$latitude" ] || [ -z "$longitude" ]; then
+      local geocode=$(curl -s "https://geocoding-api.open-meteo.com/v1/search?name=$location_name&count=1&language=en&format=json")
+      latitude=$(echo "$geocode" | jq -r '.results[0].latitude // ""')
+      longitude=$(echo "$geocode" | jq -r '.results[0].longitude // ""')
+
+      # Update the cache file with the new coordinates if valid ones were found
+      if [ -n "$latitude" ] && [ -n "$longitude" ]; then
+        if [ -f "$coordinates_cache_file" ]; then
+          # Update existing cache file
+          jq --arg location "$location_name" --arg latitude "$latitude" --arg longitude "$longitude" \
+            '.location += {$location: {"latitude": $latitude, "longitude": $longitude}}' "$coordinates_cache_file" > "$coordinates_cache_file.tmp" && \
+            mv "${coordinates_cache_file}.tmp" "${coordinates_cache_file}" --force
+        else
+          # Create new cache file
+          mkdir -p "$(dirname "$coordinates_cache_file")"
+          jq -n --arg location "$location_name" --arg latitude "$latitude" --arg longitude "$longitude" \
+            '{location: {$location: {"latitude": $latitude, "longitude": $longitude}}}' > "$coordinates_cache_file"
+        fi
+      fi
+    fi
+
+    [ -n "$latitude" ] && [ -n "$longitude" ] && echo "$latitude $longitude" && return
+    echo "unknown"
     return
   fi
 
+  # Fallback to ipinfo.io if @weather-location is not set
   local cache_location_duration_minutes=$(get_tmux_option @weather-location-interval 240) # in minutes
   if [ "$cache_location_duration_minutes" -lt 120 ]; then
     cache_location_duration_minutes=120
@@ -46,24 +54,24 @@ get_location() {
   local cache_location_duration=$((cache_location_duration_minutes * 60))
   local cache_location_path=$(get_tmux_option @weather-location-cache-path "/tmp/.weather-location.json")
   local cache_file_age=$(get_file_age "$cache_location_path")
-  # TODO: The external if statement is not needed anymore
+  local location_info=""
+
   if [ "$cache_location_duration" -gt 0 ]; then
     if ! [ -f "$cache_location_path" ] || [ "$cache_file_age" -ge "$cache_location_duration" ]; then
-      location=$(curl -s https://ipinfo.io/ 2>/dev/null)
+      location_info=$(curl -s https://ipinfo.io/ 2>/dev/null)
       mkdir -p "$(dirname "$cache_location_path")"
-      echo $location >"$cache_location_path"
+      echo "$location_info" >"$cache_location_path"
     else
-      location=$(cat "$cache_location_path" 2>/dev/null)
+      location_info=$(cat "$cache_location_path" 2>/dev/null)
     fi
   else
-    location=$(curl -s https://ipinfo.io/ 2>/dev/null)
+    location_info=$(curl -s https://ipinfo.io/ 2>/dev/null)
   fi
 
-  #city=$(echo $location | jq -r '.city')
-  #region=$(echo $location | jq -r '.region')
-  latitude=$(echo "$location" | jq -r '.loc' | cut -d ',' -f 1)
-  longitude=$(echo "$location" | jq -r '.loc' | cut -d ',' -f 2)
-  [ -n "$location" ] && echo "$latitude $longitude" && return
+  local latitude=$(echo "$location_info" | jq -r '.loc // ""' | cut -d ',' -f 1)
+  local longitude=$(echo "$location_info" | jq -r '.loc // ""' | cut -d ',' -f 2)
+
+  [ -n "$latitude" ] && [ -n "$longitude" ] && echo "$latitude $longitude" && return
 
   echo "unknown"
 }
