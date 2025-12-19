@@ -4,6 +4,22 @@ CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "$CURRENT_DIR/helpers.sh"
 
+# Function to check if jq is installed
+check_jq_installed() {
+  if ! command -v jq &>/dev/null; then
+    echo "ERROR: 'jq' command not found." >&2
+    echo "The weather script requires 'jq' to parse JSON responses from APIs." >&2
+    echo "Please install 'jq' using your system's package manager:" >&2
+    echo "  - Debian/Ubuntu: sudo apt-get update && sudo apt-get install -y jq" >&2
+    echo "  - Fedora/RHEL/CentOS: sudo dnf install -y jq" >&2
+    echo "  - macOS (with Homebrew): brew install jq" >&2
+    echo "  - Arch Linux: sudo pacman -S jq" >&2
+    echo "  - Other: Check your distribution's documentation for installing 'jq'." >&2
+    echo "JQ Missing" # Output to tmux status bar
+    exit 1
+  fi
+}
+
 get_location() {
   local location_name
   local coordinates_cache_file=$(get_tmux_option "@weather-coordinates-cache-file" "/tmp/.city-coordinates.json")
